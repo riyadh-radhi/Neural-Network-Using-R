@@ -1,0 +1,185 @@
+---
+title: "Riyadh Radhi HomeWork7 Neural Network"
+author: "Riyadh Radhi"
+date: "March 8, 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Neural Network
+## Classifing Letters based on specific attributes
+
+The following report will try to Classifing Letters based on specific attributes and try to guess the letters of my initial name/sure name which are *R,I,Y,A,D,H*
+
+
+### 1.Step One
+
+First, I will load all the requried libraries and set the working directory and read my data
+
+
+```{r, message= FALSE, warning=FALSE}
+
+rm(list = ls())
+
+
+library(MASS)
+library(dplyr)
+library(scales)
+library(caret)
+library(neuralnet)
+
+setwd("C:\\Users\\lenovo\\Desktop\\Spring 2019\\DataMining\\Neural Network HW")
+
+df <- read.csv("letterdata.csv")
+
+```
+
+### 2. Step Two
+
+Then I will filter my dataframe based on letters of my name 
+
+```{r}
+myName_data <- filter(df, letter == "R" | letter == "I" | letter == "Y" | letter == "A" | letter == "D" | letter == "H")
+```
+
+### 3. Step Three
+
+After filtering based on the desired letters , let us do Scaling prediction of myName_data to [0,1] range and then rounding them
+
+```{r}
+myName_data[,-1] <- rescale(as.matrix(myName_data[,-1]), to= c(0,1))
+myName_data[,-1] <- round(myName_data[,-1], 2)
+head(myName_data)
+```
+
+### 4. Step Four 
+Now we need to generate nodes for the final results, these will be our end results nodes 
+```{r}
+myName_data$R <- myName_data$letter == "R"
+myName_data$I <- myName_data$letter == "I"
+myName_data$Y <- myName_data$letter == "Y"
+myName_data$A <- myName_data$letter == "A"
+myName_data$D <- myName_data$letter == "D"
+myName_data$H <- myName_data$letter == "H"
+head(myName_data)
+```
+
+### 5. Step Five  
+
+Now we are ready to do the seed and the data partioning 
+```{r, warning=FALSE, message=FALSE}
+set.seed(175191)
+
+index <- createDataPartition(myName_data$letter, p = 0.7,list = F)
+train <- myName_data[index,]
+test <- myName_data[-index,]
+```
+
+### 6. Step Six
+
+Now we will start the Training of Neural Network Model, notice that I increased the **threshold** to *0.2*
+so that it converges 
+```{r}
+set.seed(175191)
+
+nn <- neuralnet(R+I+Y+A+D+H ~ xbox + ybox + width+height+onpix+xbar+ybar+x2bar+y2bar+xybar+x2ybar+xy2bar+xedge+xedgey+yedge+yedgex,
+                data = train, linear.output = F,
+                hidden = 3, act.fct = "logistic",
+                threshold = 0.2)
+```
+
+
+### 7.Step Seven
+
+I'm generating this plot is just to visulaize our nn model
+```{r}
+plot(nn, rep="best")
+```
+
+
+
+### 8.Step Eight
+now we will Predict Class Labels on the test set letters, Please note that I will not use the function *compute* to do the prediction because it has been adviced to use the new function called *predict* for neural network prediction 
+```{r}
+nn_predict <- predict(nn, test)
+head(nn_predict)
+```
+
+
+### 9. Step Nine
+
+Before I will be able to construct the confusion matrix, I will need to transfer my predictioninto factor, and also transfer each index number to its corrsponding letter of my name
+
+```{r}
+predicted_class <- apply(nn_predict,1,which.max)-1
+
+predicted_class[which(predicted_class == "0")] <- "R"
+predicted_class[which(predicted_class == "1")] <- "I"
+predicted_class[which(predicted_class == "2")] <- "Y"
+predicted_class[which(predicted_class == "3")] <- "A"
+predicted_class[which(predicted_class == "4")] <- "D"
+predicted_class[which(predicted_class == "5")] <- "H"
+
+
+predicted_class <- as.factor(predicted_class)
+head(predicted_class)
+```
+
+### 10.Step Ten
+
+At last, we can now start constructing the confusion matrix 
+```{r, warning=FALSE, message=FALSE}
+nn_confusionMatrix <- confusionMatrix(predicted_class,test$letter)
+```
+
+**Accuracy**
+```{r}
+nn_confusionMatrix$overall
+```
+
+**Table**
+```{r}
+nn_confusionMatrix$table
+```
+
+So we can see that we have good accuracy rate 0.892, and if we took a look at the table we can see that 
+we were able to get the letter **A** , *208* times correct and only *7* times false when the algorithim 
+actually thought it is **H** and *8* times, the algorithim thought it is **R** and *13* times, it thought 
+it is **y**. we can see the other details from the table. 
+
+### 11. Step Eleven (Optional)
+
+So this is just extra to improve my model, I will increase the hidden nodes to 5 
+in order to improve the accuracy of the model 
+```{r}
+set.seed(175191)
+
+nn <- neuralnet(R+I+Y+A+D+H ~ xbox + ybox + width+height+onpix+xbar+ybar+x2bar+y2bar+xybar+x2ybar+xy2bar+xedge+xedgey+yedge+yedgex,
+                data = train, linear.output = F,
+                hidden = 5, act.fct = "logistic",
+                threshold = 0.2)
+```
+
+### 12. Step Twelve 
+I will test the accuracy of the new model that I did
+
+```{r, warning=FALSE, message=FALSE}
+
+nn_predict <- predict(nn, test)
+predicted_class <- apply(nn_predict,1,which.max)-1
+predicted_class[which(predicted_class == "0")] <- "R"
+predicted_class[which(predicted_class == "1")] <- "I"
+predicted_class[which(predicted_class == "2")] <- "Y"
+predicted_class[which(predicted_class == "3")] <- "A"
+predicted_class[which(predicted_class == "4")] <- "D"
+predicted_class[which(predicted_class == "5")] <- "H"
+predicted_class <- as.factor(predicted_class)
+nn_confusionMatrix <- confusionMatrix(predicted_class,test$letter)
+```
+
+```{r}
+nn_confusionMatrix$overall
+```
+
+As we can see the accuracy we have with the new model is *higher* that the one before it 
